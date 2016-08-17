@@ -180,6 +180,7 @@ class CallAnalyzer : public InstVisitor<CallAnalyzer, bool> {
   bool visitAlloca(AllocaInst &I);
   bool visitPHI(PHINode &I);
   bool visitGetElementPtr(GetElementPtrInst &I);
+  bool visitFreeze(FreezeInst &I);
   bool visitBitCast(BitCastInst &I);
   bool visitPtrToInt(PtrToIntInst &I);
   bool visitIntToPtr(IntToPtrInst &I);
@@ -426,6 +427,23 @@ bool CallAnalyzer::visitGetElementPtr(GetElementPtrInst &I) {
   return false;
 }
 
+bool CallAnalyzer::visitFreeze(FreezeInst &I) {
+  // Propagate constants through bitcasts.
+  Constant *COp = dyn_cast<Constant>(I.getOperand(0));
+  if (!COp)
+    COp = SimplifiedValues.lookup(I.getOperand(0));
+  if (COp)
+    if (Constant *C = ConstantExpr::getFreeze(COp)) {
+      SimplifiedValues[&I] = C;
+      return true;
+    }
+  
+  // Freezed value always has integer type. It has nothing
+  // to do with ConstantOffsetPtrs and SROAArgVAlues
+
+  // Freezes are always zero cost.
+  return true;
+}
 bool CallAnalyzer::visitBitCast(BitCastInst &I) {
   // Propagate constants through bitcasts.
   Constant *COp = dyn_cast<Constant>(I.getOperand(0));
