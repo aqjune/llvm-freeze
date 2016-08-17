@@ -2564,7 +2564,7 @@ static bool mergeConditionalStoreToAddress(BasicBlock *PTB, BasicBlock *PFB,
         ++N;
       // Free instructions.
       else if (isa<TerminatorInst>(I) || isa<DbgInfoIntrinsic>(I) ||
-               IsaBitcastOfPointerType(I))
+               IsaBitcastOfPointerType(I) || isa<FreezeInst>(I))
         continue;
       else
         return false;
