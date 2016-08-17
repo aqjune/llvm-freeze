@@ -69,7 +69,8 @@ isSimpleEnoughValueToCommitHelper(Constant *C,
   ConstantExpr *CE = cast<ConstantExpr>(C);
   switch (CE->getOpcode()) {
   case Instruction::BitCast:
-    // Bitcast is fine if the casted value is fine.
+  case Instruction::Freeze:
+    // Bitcast and Freeze is fine if the operand value is fine.
     return isSimpleEnoughValueToCommit(CE->getOperand(0), SimpleConstants, DL);
 
   case Instruction::IntToPtr:
@@ -287,6 +288,10 @@ bool Evaluator::EvaluateBlock(BasicBlock::iterator CurInst,
                                          getVal(CI->getOperand(0)),
                                          CI->getType());
       DEBUG(dbgs() << "Found a Cast! Simplifying: " << *InstResult
+            << "\n");
+    } else if (FreezeInst *FI = dyn_cast<FreezeInst>(CurInst)) {
+      InstResult = ConstantExpr::getFreeze(getVal(FI->getOperand(0)));
+      DEBUG(dbgs() << "Found a Freeze! Simplifying: " << *InstResult
             << "\n");
     } else if (SelectInst *SI = dyn_cast<SelectInst>(CurInst)) {
       InstResult = ConstantExpr::getSelect(getVal(SI->getOperand(0)),
