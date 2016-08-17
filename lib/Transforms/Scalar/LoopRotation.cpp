@@ -535,6 +535,8 @@ static bool shouldSpeculateInstrs(BasicBlock::iterator Begin,
     case Instruction::SExt:
       // ignore type conversions
       break;
+    case Instruction::Freeze:
+      break;
     }
   }
   return true;

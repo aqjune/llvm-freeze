@@ -6330,6 +6330,20 @@ unsigned LoopVectorizationCostModel::getInstructionCost(Instruction *I,
       return std::min(CallCost, getVectorIntrinsicCost(CI, VF, TTI, TLI));
     return CallCost;
   }
+  case Instruction::Freeze: {
+    // Freeze does not support vector type parameter.
+    // Therefore, scalarizing Freeze instruction will involve additional
+    // InsertElement/ExtractElement, like following
+    // %A = extractelement <4 x i32> %vec, i32 0
+    // %A.fr = freeze i32 %A
+    // %A.new = insertelement <4 x i32> %vec, i32 %A.fr, i32 0
+    unsigned InsCost =
+        TTI.getVectorInstrCost(Instruction::InsertElement, VectorTy);
+    unsigned ExtCost =
+        TTI.getVectorInstrCost(Instruction::ExtractElement, VectorTy);
+
+    return VF * (InsCost + ExtCost);
+  }
   default: {
     // We are scalarizing the instruction. Return the cost of the scalar
     // instruction, plus the cost of insert and extract into vector
