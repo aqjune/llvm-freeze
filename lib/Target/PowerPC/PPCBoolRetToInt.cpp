@@ -123,7 +123,7 @@ class PPCBoolRetToInt : public FunctionPass {
       // Condition 2 and 3
       auto IsValidUser = [] (const Value *V) -> bool {
         return isa<ReturnInst>(V) || isa<CallInst>(V) || isa<PHINode>(V) ||
-        isa<DbgInfoIntrinsic>(V);
+        isa<DbgInfoIntrinsic>(V) || isa<FreezeInst>(V);
       };
       auto IsValidOperand = [] (const Value *V) -> bool {
         return isa<Constant>(V) || isa<Argument>(V) || isa<CallInst>(V) ||
