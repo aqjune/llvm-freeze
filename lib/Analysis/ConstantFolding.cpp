@@ -945,6 +945,8 @@ Constant *ConstantFoldInstOperandsImpl(const Value *InstOrCE, Type *DestTy,
     return ConstantExpr::getInsertElement(Ops[0], Ops[1], Ops[2]);
   case Instruction::ShuffleVector:
     return ConstantExpr::getShuffleVector(Ops[0], Ops[1], Ops[2]);
+  case Instruction::Freeze:
+    return ConstantExpr::getFreeze(Ops[0]);
   }
 }
 
@@ -1022,6 +1024,11 @@ Constant *llvm::ConstantFoldInstruction(Instruction *I, const DataLayout &DL,
     return ConstantExpr::getExtractValue(
                                     cast<Constant>(EVI->getAggregateOperand()),
                                     EVI->getIndices());
+  }
+
+  if (FreezeInst *FI = dyn_cast<FreezeInst>(I)) {
+    Constant *CFI = ConstantExpr::getFreeze(cast<Constant>(FI->getOperand(0)));
+    return CFI;
   }
 
   return ConstantFoldInstOperands(I, Ops, DL, TLI);
@@ -1166,7 +1173,8 @@ Constant *llvm::ConstantFoldBinaryOpOperands(unsigned Opcode, Constant *LHS,
   if (isa<ConstantExpr>(LHS) || isa<ConstantExpr>(RHS))
     if (Constant *C = SymbolicallyEvaluateBinop(Opcode, LHS, RHS, DL))
       return C;
-
+  
+  assert (LHS && RHS);
   return ConstantExpr::get(Opcode, LHS, RHS);
 }
 
