@@ -198,29 +198,7 @@ Instruction *InstCombiner::FoldSelectOpOp(SelectInst &SI, Instruction *TI,
     return nullptr;
   }
 
-  // If we reach here, they do have operations in common.
-  // Freeze the condition value to prevent this case : 
-  //   <src>                 |      <tgt>
-  // X = udiv A, B           | 
-  // Y = udiv A, C           | t' = select undef, B, C (which is undef)
-  // Z = select undef, X, Y  | Z = udiv A, t' (which is UB)
   Value *Cond = SI.getCondition();
-  switch (TI->getOpcode()) {
-  default : break;
-  case Instruction::UDiv:
-  case Instruction::URem:
-  case Instruction::SDiv:
-  case Instruction::SRem:
-    if (!isa<Constant>(SI.getCondition()))
-      // Create Freeze at the definition of condition value, and
-      // replace all uses of SI.getCondition() with the new freeze instruction.
-      Cond = Builder->CreateFreezeAtDef(Cond,
-                                       SI.getParent()->getParent(),
-                                       Cond->getName() + ".fr");
-    else
-      Cond = Builder->CreateFreeze(Cond, 
-                                   Cond->getName() + ".fr");
-  }
   Value *NewSI = Builder->CreateSelect(Cond, OtherOpT,
                                        OtherOpF, SI.getName()+".v");
 
