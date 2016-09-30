@@ -1299,16 +1299,13 @@ bool GVN::AnalyzeLoadAvailability(LoadInst *LI, MemDepResult DepInfo,
     // read by the load, we can extract the bits we need for the load from the
     // stored value.
     if (StoreInst *DepSI = dyn_cast<StoreInst>(DepInfo.getInst())) {
-      // Juneyoung Lee : Add constraint for this branch
-      if (DepSI->getValueOperand()->getType() == LI->getType()) {
-        // Can't forward from non-atomic to atomic without violating memory model.
-        if (Address && LI->isAtomic() <= DepSI->isAtomic()) {
-          int Offset =
-            AnalyzeLoadFromClobberingStore(LI->getType(), Address, DepSI);
-          if (Offset != -1) {
-            Res = AvailableValue::get(DepSI->getValueOperand(), Offset);
-            return true;
-          }
+      // Can't forward from non-atomic to atomic without violating memory model.
+      if (Address && LI->isAtomic() <= DepSI->isAtomic()) {
+        int Offset =
+          AnalyzeLoadFromClobberingStore(LI->getType(), Address, DepSI);
+        if (Offset != -1) {
+          Res = AvailableValue::get(DepSI->getValueOperand(), Offset);
+          return true;
         }
       }
     }
@@ -1318,19 +1315,16 @@ bool GVN::AnalyzeLoadAvailability(LoadInst *LI, MemDepResult DepInfo,
     //    load i8* (P+1)
     // if we have this, replace the later with an extraction from the former.
     if (LoadInst *DepLI = dyn_cast<LoadInst>(DepInfo.getInst())) {
-      // Juneyoung Lee : Add constraint for this branch
-      if (DepLI->getType() == LI->getType()) {
-        // If this is a clobber and L is the first instruction in its block, then
-        // we have the first instruction in the entry block.
-        // Can't forward from non-atomic to atomic without violating memory model.
-        if (DepLI != LI && Address && LI->isAtomic() <= DepLI->isAtomic()) {
-          int Offset =
-            AnalyzeLoadFromClobberingLoad(LI->getType(), Address, DepLI, DL);
+      // If this is a clobber and L is the first instruction in its block, then
+      // we have the first instruction in the entry block.
+      // Can't forward from non-atomic to atomic without violating memory model.
+      if (DepLI != LI && Address && LI->isAtomic() <= DepLI->isAtomic()) {
+        int Offset =
+          AnalyzeLoadFromClobberingLoad(LI->getType(), Address, DepLI, DL);
 
-          if (Offset != -1) {
-            Res = AvailableValue::getLoad(DepLI, Offset);
-            return true;
-          }
+        if (Offset != -1) {
+          Res = AvailableValue::getLoad(DepLI, Offset);
+          return true;
         }
       }
     }
@@ -1376,9 +1370,6 @@ bool GVN::AnalyzeLoadAvailability(LoadInst *LI, MemDepResult DepInfo,
   }
 
   if (StoreInst *S = dyn_cast<StoreInst>(DepInst)) {
-    // Juneyoung Lee : Add constraint for this branch
-    if (S->getValueOperand()->getType() != LI->getType())
-      return false;
     // Reject loads and stores that are to the same address but are of
     // different types if we have to. If the stored value is larger or equal to
     // the loaded value, we can reuse it.
@@ -1396,9 +1387,6 @@ bool GVN::AnalyzeLoadAvailability(LoadInst *LI, MemDepResult DepInfo,
   }
 
   if (LoadInst *LD = dyn_cast<LoadInst>(DepInst)) {
-    // Juneyoung Lee : Add constraint for this branch
-    if (LD->getType() != LI->getType())
-      return false;
     // If the types mismatch and we can't handle it, reject reuse of the load.
     // If the stored value is larger or equal to the loaded value, we can reuse
     // it.
