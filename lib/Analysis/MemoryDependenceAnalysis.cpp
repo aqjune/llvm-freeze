@@ -531,18 +531,6 @@ MemDepResult MemoryDependenceResults::getSimplePointerDependencyFrom(
 
       if (isLoad) {
         if (R == NoAlias) {
-          // If this is an over-aligned integer load (for example,
-          // "load i8* %P, align 4") see if it would obviously overlap with the
-          // queried location if widened to a larger load (e.g. if the queried
-          // location is 1 byte at P+1).  If so, return it as a load/load
-          // clobber result, allowing the client to decide to widen the load if
-          // it wants to.
-          if (IntegerType *ITy = dyn_cast<IntegerType>(LI->getType())) {
-            if (LI->getAlignment() * 8 > ITy->getPrimitiveSizeInBits() &&
-                isLoadLoadClobberIfExtendedToFullWidth(MemLoc, MemLocBase,
-                                                       MemLocOffset, LI))
-              return MemDepResult::getClobber(Inst);
-          }
           continue;
         }
 
