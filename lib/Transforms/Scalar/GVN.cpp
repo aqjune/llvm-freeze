@@ -1023,7 +1023,8 @@ static Value *GetStoreValueForLoad(Value *SrcVal, unsigned Offset,
         ConstantVector::get(Mask));
     SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, LoadSize * 8));
   } else {
-    llvm_unreachable("GVN : Using shr/trunc is disabled!");
+    // Juneyoung Lee : When GetStoreValueForLoad is called from 
+    // AvailableValue::MaterializeAdjustedValue(), satisfying isSimpleValue().
     if (!SrcVal->getType()->isIntegerTy())
       SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, StoreSize*8));
 
