@@ -999,46 +999,31 @@ static Value *GetStoreValueForLoad(Value *SrcVal, unsigned Offset,
     SrcVal = Builder.CreatePtrToInt(SrcVal,
         DL.getIntPtrType(SrcVal->getType()));
 
-  // If SrcVal is a type of vector <N x iM> such that
-  // (LoadTy->getPrimitiveSizeInBits()) % M == 0?
+  // If SrcVal is a type of vector <N x i1>?
   bool canUseVectorOperation = 
       // 1. SrcVal must be a vector of integer type
       SrcVal->getType()->isVectorTy() &&
       SrcVal->getType()->getVectorElementType()->isIntegerTy() &&
-      // 2. Size of each element is multiple of 8 bits 
+      // 2. Size of each element is 1 bit 
       (SrcVal->getType()->getVectorElementType()->
-          getPrimitiveSizeInBits() % 8 == 0) && 
-      // 3. Load ty size is multiple of 8 bits
-      (DL.getTypeSizeInBits(LoadTy) % 8 == 0) &&
-      // 4. LoadSize is multiple of element size
-      ((LoadSize * 8) % (SrcVal->getType()->
-          getVectorElementType()->getPrimitiveSizeInBits()) == 0);
-
+          getPrimitiveSizeInBits() == 1);
+  
   if (canUseVectorOperation) {
-    unsigned VectorElemByteSize = SrcVal->getType()->getVectorElementType()->
-        getPrimitiveSizeInBits() / 8;
-    unsigned VectorElemOffset = Offset / VectorElemByteSize;
-    if (VectorElemByteSize == LoadSize) {
-      // Use extractelement.
-      SrcVal = Builder.CreateExtractElement(SrcVal, VectorElemOffset);
-    } else {
-      assert ((LoadSize % VectorElemByteSize == 0) && 
-          "LoadSize is not multiple of VectorElemByteSize");
-      // Use shufflevector + bitcast.
-      // Note that we don't have to consider endianness,
-      // because loading vector will always guarantee that the 0th element
-      // is from the lowest memory address
-      // http://llvm.org/docs/BigEndianNEON.html
-      SmallVector<Constant *, 16> Mask;
-      IntegerType *IntType = Type::getInt32Ty(LoadTy->getContext());
-      unsigned ItemCount = LoadSize % VectorElemByteSize;
-      for (unsigned i = 0; i < ItemCount; i++)
-        Mask.push_back(ConstantInt::get(IntType, i + VectorElemOffset));
-      SrcVal = Builder.CreateShuffleVector(SrcVal, UndefValue::get(SrcVal->getType()),
-          ConstantVector::get(Mask));
-      SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, LoadSize * 8));
-    }
+    // Use shufflevector + bitcast.
+    // Note that we don't have to consider endianness,
+    // because loading vector will always guarantee that the 0th element
+    // is from the lowest memory address
+    // http://llvm.org/docs/BigEndianNEON.html
+    SmallVector<Constant *, 16> Mask;
+    IntegerType *IntType = Type::getInt32Ty(LoadTy->getContext());
+    unsigned ItemCount = LoadSize * 8;
+    for (unsigned i = 0; i < ItemCount; i++)
+      Mask.push_back(ConstantInt::get(IntType, i + 8 * Offset));
+    SrcVal = Builder.CreateShuffleVector(SrcVal, UndefValue::get(SrcVal->getType()),
+        ConstantVector::get(Mask));
+    SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, LoadSize * 8));
   } else {
+    llvm_unreachable("GVN : Using shr/trunc is disabled!");
     if (!SrcVal->getType()->isIntegerTy())
       SrcVal = Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, StoreSize*8));
 
@@ -1068,69 +1053,46 @@ static Value *GetLoadValueForLoad(LoadInst *SrcVal, unsigned Offset,
                                   Type *LoadTy, Instruction *InsertPt,
                                   GVN &gvn) {
   const DataLayout &DL = SrcVal->getModule()->getDataLayout();
-  // If Offset+LoadTy exceeds the size of SrcVal, then we must be wanting to
-  // widen SrcVal out to a larger load.
-  unsigned SrcValStoreSize = DL.getTypeStoreSize(SrcVal->getType());
+  Type *SrcValTy = SrcVal->getType();
+  // If SrcValTy exceeds the size of LoadTy, then we must convert SrcValTy into
+  // <N x i1> vector type
+  unsigned SrcValStoreSize = DL.getTypeStoreSize(SrcValTy);
   unsigned LoadSize = DL.getTypeStoreSize(LoadTy);
-  if (Offset+LoadSize > SrcValStoreSize) {
-    assert(SrcVal->isSimple() && "Cannot widen volatile/atomic load!");
-    assert(SrcVal->getType()->isIntegerTy() && "Can't widen non-integer load");
+  // Juneyoung Lee : Now we don't support load widening.
+  assert (Offset + LoadSize <= SrcValStoreSize);
+  // If SrcValTy is already <N x i1>, then we don't need it.
+  bool noNeedConversion = SrcValTy->isVectorTy();
+  if (noNeedConversion) {
+    Type *ElemTy = SrcValTy->getVectorElementType();
+    noNeedConversion = ElemTy->isIntegerTy() && 
+        ElemTy->getIntegerBitWidth() == 1;
+  }
+  if (LoadSize < SrcValStoreSize && !noNeedConversion) {
+    // assert(SrcVal->isSimple() && "Cannot widen volatile/atomic load!");
+    // assert(SrcVal->getType()->isIntegerTy() && "Can't widen non-integer load");
     // If we have a load/load clobber an DepLI can be widened to cover this
     // load, then we should widen it to the next power of 2 size big enough!
-    unsigned NewLoadSize = Offset+LoadSize;
-    if (!isPowerOf2_32(NewLoadSize))
-      NewLoadSize = NextPowerOf2(NewLoadSize);
 
     Value *PtrVal = SrcVal->getPointerOperand();
 
     // Insert the new load after the old load.  This ensures that subsequent
     // memdep queries will find the new load.  We can't easily remove the old
     // load completely because it is already in the value numbering table.
-    unsigned VectorElemByteSize = 1, VectorElemCount = NewLoadSize;
-    if (NewLoadSize % SrcValStoreSize == 0) {
-      VectorElemByteSize = SrcValStoreSize;
-      VectorElemCount = NewLoadSize / SrcValStoreSize;
-    }
     IRBuilder<> Builder(SrcVal->getParent(), ++BasicBlock::iterator(SrcVal));
-    Type *DestPTy = VectorType::get(IntegerType::get(LoadTy->getContext(), 
-                                    VectorElemByteSize * 8), VectorElemCount);
-    DestPTy = PointerType::get(DestPTy,
-                               PtrVal->getType()->getPointerAddressSpace());
+    Type *DestTy = VectorType::get(IntegerType::get(LoadTy->getContext(), 1),
+                                    SrcValStoreSize * 8);
+    Type *DestPTy = PointerType::get(DestTy,
+                                   PtrVal->getType()->getPointerAddressSpace());
     Builder.SetCurrentDebugLocation(SrcVal->getDebugLoc());
     PtrVal = Builder.CreateBitCast(PtrVal, DestPTy);
     LoadInst *NewLoad = Builder.CreateLoad(PtrVal);
     NewLoad->takeName(SrcVal);
     NewLoad->setAlignment(SrcVal->getAlignment());
 
-    DEBUG(dbgs() << "GVN WIDENED LOAD: " << *SrcVal << "\n");
-    DEBUG(dbgs() << "TO: " << *NewLoad << "\n");
-
-    // Replace uses of the original load with the wider load.  On a big endian
-    // system, we need to shift down to get the relevant bits.
     Value *RV = NewLoad;
-    if (SrcValStoreSize == VectorElemByteSize) {
-      // extractelement
-      // Note that we don't have to consider endianness,
-      // because loading vector will always guarantee that the 0th element
-      // is from the lowest memory address
-      // http://llvm.org/docs/BigEndianNEON.html
-      RV = Builder.CreateExtractElement(RV, (uint64_t)0);
-    } else {
-      // shufflevector + bitcast
-      // Note that we don't have to consider endianness,
-      // because loading vector will always guarantee that the 0th element
-      // is from the lowest memory address
-      // http://llvm.org/docs/BigEndianNEON.html
-      assert (((SrcValStoreSize % VectorElemByteSize) == 0) &&
-          "Vector element byte size does not coalesce with SrcValStoreSize");
-      SmallVector<Constant *, 16> Mask;
-      IntegerType *IntType = Type::getInt32Ty(LoadTy->getContext());
-      for (unsigned i = 0; i < SrcValStoreSize / VectorElemByteSize; i++)
-        Mask.push_back(ConstantInt::get(IntType, i));
-      RV = Builder.CreateShuffleVector(RV, UndefValue::get(RV->getType()),
-          ConstantVector::get(Mask));
-      RV = Builder.CreateBitCast(RV, SrcVal->getType());
-    }
+    // Bitcast NewLoad into original SrcVal type by bitcast
+    RV = Builder.CreateBitCast(RV, SrcVal->getType());
+
     SrcVal->replaceAllUsesWith(RV);
 
     // We would like to use gvn.markInstructionForDeletion here, but we can't
