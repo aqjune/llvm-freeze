@@ -1092,7 +1092,14 @@ static Value *GetLoadValueForLoad(LoadInst *SrcVal, unsigned Offset,
 
     Value *RV = NewLoad;
     // Bitcast NewLoad into original SrcVal type by bitcast
-    RV = Builder.CreateBitCast(RV, SrcVal->getType());
+    if (SrcValTy->isPointerTy()) {
+      // Cannot bitcast <N x i1> -> ptrty.
+      // Do <N x i1> -> intty -> ptrty.
+      RV = Builder.CreateBitCast(RV, DL.getIntPtrType(SrcValTy));
+      RV = Builder.CreateIntToPtr(RV, SrcValTy);
+    } else {
+      RV = Builder.CreateBitCast(RV, SrcValTy);
+    }
 
     SrcVal->replaceAllUsesWith(RV);
 
