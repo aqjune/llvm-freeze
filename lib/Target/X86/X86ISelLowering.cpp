@@ -16369,6 +16369,15 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
   SDLoc dl(Op);
   SDValue CC;
   bool Inverted = false;
+  bool Unfreezed = false;
+
+  if (Cond.getOpcode() == ISD::FREEZE) {
+    // Cond was a FREEZE node.
+    // If we're to make a new condition value, the new value must be freezed
+    // as well.
+    Unfreezed = true;
+    Cond = Cond.getOperand(0);
+  }
 
   if (Cond.getOpcode() == ISD::SETCC) {
     // Check for setcc([su]{add,sub,mul}o == 0).
@@ -16489,6 +16498,10 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
         if (Cmp == Cond.getOperand(1).getOperand(1) &&
             isX86LogicalCmp(Cmp)) {
           CC = Cond.getOperand(0).getOperand(0);
+          if (Unfreezed)
+            // Freeze the X86ISD::SETCC result.
+            Cmp =  DAG.getNode(ISD::FREEZE, SDLoc(Cmp), 
+                               Cmp.getValueType(), Cmp);
           Chain = DAG.getNode(X86ISD::BRCOND, dl, Op.getValueType(),
                               Chain, Dest, CC, Cmp);
           CC = Cond.getOperand(1).getOperand(0);
@@ -16520,6 +16533,10 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
             (void)NewBR;
             Dest = FalseBB;
 
+            if (Unfreezed)
+              // Freeze the X86ISD::SETCC result.
+              Cmp =  DAG.getNode(ISD::FREEZE, SDLoc(Cmp), 
+                                 Cmp.getValueType(), Cmp);
             Chain = DAG.getNode(X86ISD::BRCOND, dl, Op.getValueType(),
                                 Chain, Dest, CC, Cmp);
             X86::CondCode CCode =
@@ -16565,6 +16582,10 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
                                     Cond.getOperand(0), Cond.getOperand(1));
           Cmp = ConvertCmpIfNecessary(Cmp, DAG);
           CC = DAG.getConstant(X86::COND_NE, dl, MVT::i8);
+          if (Unfreezed)
+            // Freeze the X86ISD::SETCC result.
+            Cmp =  DAG.getNode(ISD::FREEZE, SDLoc(Cmp), 
+                               Cmp.getValueType(), Cmp);
           Chain = DAG.getNode(X86ISD::BRCOND, dl, Op.getValueType(),
                               Chain, Dest, CC, Cmp);
           CC = DAG.getConstant(X86::COND_P, dl, MVT::i8);
@@ -16595,6 +16616,10 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
                                     Cond.getOperand(0), Cond.getOperand(1));
           Cmp = ConvertCmpIfNecessary(Cmp, DAG);
           CC = DAG.getConstant(X86::COND_NE, dl, MVT::i8);
+          if (Unfreezed)
+            // Freeze the X86ISD::SETCC result.
+            Cmp =  DAG.getNode(ISD::FREEZE, SDLoc(Cmp), 
+                               Cmp.getValueType(), Cmp);
           Chain = DAG.getNode(X86ISD::BRCOND, dl, Op.getValueType(),
                               Chain, Dest, CC, Cmp);
           CC = DAG.getConstant(X86::COND_NP, dl, MVT::i8);
@@ -16628,6 +16653,9 @@ SDValue X86TargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
     Cond = EmitTest(Cond, X86Cond, dl, DAG);
   }
   Cond = ConvertCmpIfNecessary(Cond, DAG);
+  if (Unfreezed)
+    // Freeze the X86ISD::SETCC result.
+    Cond =  DAG.getNode(ISD::FREEZE, SDLoc(Cond), Cond.getValueType(), Cond);
   return DAG.getNode(X86ISD::BRCOND, dl, Op.getValueType(),
                      Chain, Dest, CC, Cond);
 }
