@@ -22,5 +22,17 @@ Instruction *InstCombiner::visitFreeze(FreezeInst &FI) {
   if (FreezeInst *Op0_FI = dyn_cast<FreezeInst>(Op0))
     return replaceInstUsesWith(FI, Op0_FI);
 
+  ICmpInst::Predicate Pred;
+  Value *ICmpLHS;
+  ConstantInt *ICmpRHS;
+  if (match(&FI, m_Freeze(m_ICmp(Pred, m_Value(ICmpLHS),
+                                m_ConstantInt(ICmpRHS))))) {
+    ICmpInst *ICmp = dyn_cast<ICmpInst>(FI.getOperand(0));
+    Value *ICmpLHSFr = Builder->CreateFreezeAtDef(ICmpLHS,
+                       ICmp->getParent()->getParent());
+    Value *NewICmp = Builder->CreateICmp(Pred, ICmpLHSFr, ICmpRHS);
+    return replaceInstUsesWith(FI, NewICmp);
+  }
+
   return nullptr;
 }
