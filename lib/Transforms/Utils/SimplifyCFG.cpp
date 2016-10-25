@@ -2364,8 +2364,10 @@ bool llvm::FoldBranchToCommonDest(BranchInst *BI, unsigned BonusInstThreshold) {
     Cond->setName(New->getName() + ".old");
 
     if (BI->isConditional()) {
+      Value *NewFr = Builder.CreateFreezeAtDef(New, BB->getParent(),
+                                      New->getName() + ".fr");
       Instruction *NewCond = cast<Instruction>(
-          Builder.CreateBinOp(Opc, PBI->getCondition(), New, "or.cond"));
+          Builder.CreateBinOp(Opc, PBI->getCondition(), NewFr, "or.cond"));
       PBI->setCondition(NewCond);
 
       uint64_t PredTrueWeight, PredFalseWeight, SuccTrueWeight, SuccFalseWeight;
