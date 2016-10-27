@@ -1641,7 +1641,7 @@ SelectionDAGBuilder::EmitBranchForMergedCondition(const Value *Cond,
       }
 
       CaseBlock CB(Condition, BOp->getOperand(0), BOp->getOperand(1), nullptr,
-                   TBB, FBB, CurBB, TProb, FProb);
+                   TBB, FBB, CurBB, TProb, FProb, true, true, true);
       SwitchCases.push_back(CB);
       return;
     }
@@ -1649,7 +1649,7 @@ SelectionDAGBuilder::EmitBranchForMergedCondition(const Value *Cond,
 
   // Create a CaseBlock record representing this branch.
   CaseBlock CB(ISD::SETEQ, Cond, ConstantInt::getTrue(*DAG.getContext()),
-               nullptr, TBB, FBB, CurBB, TProb, FProb);
+               nullptr, TBB, FBB, CurBB, TProb, FProb, true, true, true);
   SwitchCases.push_back(CB);
 }
 
@@ -1664,6 +1664,12 @@ void SelectionDAGBuilder::FindMergedConditions(const Value *Cond,
                                                BranchProbability FProb) {
   // If this node is not part of the or/and tree, emit it as a branch.
   const Instruction *BOp = dyn_cast<Instruction>(Cond);
+  // It is safe to unfold freeze, because we'll mark
+  // CaseBlock::NeedFreezeLHS/NeedFreezeRHS/NeedFreezeMHS
+  // true.
+  if (const FreezeInst *FI = dyn_cast<FreezeInst>(BOp))
+    BOp = dyn_cast<Instruction>(FI->getOperand(0));
+
   if (!BOp || !(isa<BinaryOperator>(BOp) || isa<CmpInst>(BOp)) ||
       (unsigned)BOp->getOpcode() != Opc || !BOp->hasOneUse() ||
       BOp->getParent() != CurBB->getBasicBlock() ||
@@ -1804,6 +1810,9 @@ void SelectionDAGBuilder::visitBr(const BranchInst &I) {
   // now.
   const Value *CondVal = I.getCondition();
   MachineBasicBlock *Succ1MBB = FuncInfo.MBBMap[I.getSuccessor(1)];
+  // if CondVal is a freeze, then get operand of it
+  if (const FreezeInst *FI = dyn_cast<FreezeInst>(CondVal))
+    CondVal = FI->getOperand(0);
 
   // If this is a series of conditions that are or'd or and'd together, emit
   // this as a sequence of branches instead of setcc's with and/or operations.
@@ -1873,6 +1882,9 @@ void SelectionDAGBuilder::visitSwitchCase(CaseBlock &CB,
   SDValue Cond;
   SDValue CondLHS = getValue(CB.CmpLHS);
   SDLoc dl = getCurSDLoc();
+  if (CB.NeedFreezeLHS)
+    CondLHS = DAG.getNode(ISD::FREEZE, SDLoc(CondLHS),
+                          CondLHS.getValueType(), CondLHS);
 
   // Build the setcc now.
   if (!CB.CmpMHS) {
@@ -1885,8 +1897,13 @@ void SelectionDAGBuilder::visitSwitchCase(CaseBlock &CB,
              CB.CC == ISD::SETEQ) {
       SDValue True = DAG.getConstant(1, dl, CondLHS.getValueType());
       Cond = DAG.getNode(ISD::XOR, dl, CondLHS.getValueType(), CondLHS, True);
-    } else
+    } else {
+      SDValue CondRHS = getValue(CB.CmpRHS);
+      if (CB.NeedFreezeRHS)
+        CondRHS = DAG.getNode(ISD::FREEZE, SDLoc(CondRHS),
+                              CondRHS.getValueType(), CondRHS);
       Cond = DAG.getSetCC(dl, MVT::i1, CondLHS, getValue(CB.CmpRHS), CB.CC);
+    }
   } else {
     assert(CB.CC == ISD::SETLE && "Can handle only LE ranges now");
 
@@ -1895,6 +1912,9 @@ void SelectionDAGBuilder::visitSwitchCase(CaseBlock &CB,
 
     SDValue CmpOp = getValue(CB.CmpMHS);
     EVT VT = CmpOp.getValueType();
+    if (CB.NeedFreezeMHS)
+      CmpOp = DAG.getNode(ISD::FREEZE, SDLoc(CmpOp),
+                          VT, CmpOp);
 
     if (cast<ConstantInt>(CB.CmpLHS)->isMinValue(true)) {
       Cond = DAG.getSetCC(dl, MVT::i1, CmpOp, DAG.getConstant(High, dl, VT),

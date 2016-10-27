@@ -221,10 +221,13 @@ private:
               const Value *cmpmiddle, MachineBasicBlock *truebb,
               MachineBasicBlock *falsebb, MachineBasicBlock *me,
               BranchProbability trueprob = BranchProbability::getUnknown(),
-              BranchProbability falseprob = BranchProbability::getUnknown())
+              BranchProbability falseprob = BranchProbability::getUnknown(),
+              bool freezelhs = false, bool freezemhs = false,
+              bool freezerhs = false)
         : CC(cc), CmpLHS(cmplhs), CmpMHS(cmpmiddle), CmpRHS(cmprhs),
           TrueBB(truebb), FalseBB(falsebb), ThisBB(me), TrueProb(trueprob),
-          FalseProb(falseprob) {}
+          FalseProb(falseprob), NeedFreezeLHS(freezelhs), 
+          NeedFreezeMHS(freezemhs), NeedFreezeRHS(freezerhs) {}
 
     // CC - the condition code to use for the case block's setcc node
     ISD::CondCode CC;
@@ -242,6 +245,9 @@ private:
 
     // TrueProb/FalseProb - branch weights.
     BranchProbability TrueProb, FalseProb;
+
+    // FreezeLHS/FreezeMHS/FreezeRHS - do freeze lhs/mhs/rhs.
+    bool NeedFreezeLHS, NeedFreezeMHS, NeedFreezeRHS;
   };
 
   struct JumpTable {
