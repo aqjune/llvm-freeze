@@ -4533,6 +4533,23 @@ Value *llvm::SimplifyCall(Value *V, ArrayRef<Value *> Args,
   return ::SimplifyCall(V, Args.begin(), Args.end(), Q, RecursionLimit);
 }
 
+/// Given operands for a Freeze, see if we can fold the result.
+static Value *SimplifyFreezeInst(Value *Op0) {
+  // Currently we don't have constantexpr freeze, so just check
+  // whether it is a ConstantInt.
+  if (isa<ConstantInt>(Op0))
+    return Op0;
+  return nullptr;
+}
+
+Value *llvm::SimplifyFreezeInst(Value *Op0,
+                              const DataLayout &DL,
+                              const TargetLibraryInfo *TLI,
+                              const DominatorTree *DT, AssumptionCache *AC,
+                              const Instruction *CxtI) {
+  return ::SimplifyFreezeInst(Op0);
+}
+
 /// See if we can compute a simplified version of this instruction.
 /// If not, this returns null.
 
@@ -4673,6 +4690,10 @@ Value *llvm::SimplifyInstruction(Instruction *I, const SimplifyQuery &SQ,
   case Instruction::Alloca:
     // No simplifications for Alloca and it can't be constant folded.
     Result = nullptr;
+    break;
+  case Instruction::Freeze:
+    Result = 
+        SimplifyFreezeInst(I->getOperand(0), DL, TLI, DT, AC, I);
     break;
   }
 
