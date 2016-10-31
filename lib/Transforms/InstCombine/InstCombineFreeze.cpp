@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "InstCombineInternal.h"
+#include "llvm/Analysis/InstructionSimplify.h"
 using namespace llvm;
 using namespace PatternMatch;
 
@@ -19,8 +20,17 @@ using namespace PatternMatch;
 
 Instruction *InstCombiner::visitFreeze(FreezeInst &FI) {
   Value *Op0 = FI.getOperand(0);
+
+  if (Value *V = SimplifyFreezeInst(Op0, DL, TLI, DT, AC))
+    return replaceInstUsesWith(FI, V);
+
   if (FreezeInst *Op0_FI = dyn_cast<FreezeInst>(Op0))
     return replaceInstUsesWith(FI, Op0_FI);
+
+  Value *LHS = nullptr;
+  ConstantInt *CI_RHS = nullptr;
+  if (match(&FI, m_Freeze(m_And(m_Freeze(m_Value(LHS)), m_ConstantInt(CI_RHS)))))
+    return replaceInstUsesWith(FI, Op0);
 
   return nullptr;
 }
