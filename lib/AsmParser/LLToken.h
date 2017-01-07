@@ -326,6 +326,8 @@ enum Kind {
   kw_insertvalue,
   kw_blockaddress,
 
+  kw_freeze,
+
   // Metadata types.
   kw_distinct,
 
