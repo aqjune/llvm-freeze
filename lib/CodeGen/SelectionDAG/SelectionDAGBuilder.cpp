@@ -1120,8 +1120,11 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
     if (const ConstantFP *CFP = dyn_cast<ConstantFP>(C))
       return DAG.getConstantFP(*CFP, getCurSDLoc(), VT);
 
-    if (isa<UndefValue>(C) && !V->getType()->isAggregateType())
+    if (isa<UndefValue>(C) && !V->getType()->isAggregateType()) {
+      if (V->getType()->isIntegerType())
+        return DAG.getConstant(0, getCurSDLoc(), VT);
       return DAG.getUNDEF(VT);
+    }
 
     if (const ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
       visit(CE->getOpcode(), *CE);
