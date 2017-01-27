@@ -1121,7 +1121,7 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
       return DAG.getConstantFP(*CFP, getCurSDLoc(), VT);
 
     if (isa<UndefValue>(C) && !V->getType()->isAggregateType()) {
-      if (V->getType()->isIntegerType())
+      if (V->getType()->isIntegerTy())
         return DAG.getConstant(0, getCurSDLoc(), VT);
       return DAG.getUNDEF(VT);
     }
