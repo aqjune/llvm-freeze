@@ -3922,7 +3922,6 @@ bool llvm::isKnownNotFullPoison(const Instruction *PoisonI) {
   return false;
 }
 
-
 static bool isKnownNonNaN(const Value *V, FastMathFlags FMF) {
   if (FMF.noNaNs())
     return true;
