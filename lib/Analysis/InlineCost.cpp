@@ -1077,6 +1077,10 @@ bool CallAnalyzer::analyzeBlock(BasicBlock *BB,
     if (isa<DbgInfoIntrinsic>(I))
       continue;
 
+    // Freeze instruction has zero cost.
+    if (isa<FreezeInst>(I))
+      continue;
+
     // Skip ephemeral values.
     if (EphValues.count(&*I))
       continue;
