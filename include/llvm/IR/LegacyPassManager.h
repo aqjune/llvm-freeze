@@ -19,6 +19,7 @@
 
 #include "llvm/Pass.h"
 #include "llvm/Support/CBindingWrapping.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
 
@@ -26,6 +27,9 @@ class Pass;
 class Module;
 
 namespace legacy {
+
+extern std::string ModuleDumpOutFileName;
+extern raw_ostream *ModuleDumpOutStream;
 
 class PassManagerImpl;
 class FunctionPassManagerImpl;
