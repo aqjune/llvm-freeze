@@ -31,8 +31,6 @@ PreservedAnalyses PrintModulePass::run(Module &M, ModuleAnalysisManager &, const
   OS << Banner;
   if (F)
     OS << "Function name : " << F->getName() << "\n";
-  else
-    OS << "Function name : null\n";
   if (llvm::isFunctionInPrintList("*"))
     M.print(OS, nullptr, ShouldPreserveUseListOrder);
   else {
