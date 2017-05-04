@@ -885,14 +885,13 @@ static void FreezeBranchCondition(Value *&LIC, BasicBlock *LoopPreheader) {
     // It is unnecessary to freeze the condition.
     return;
 
-  IRBuilder<> Builder(LoopPreheader);
+  IRBuilder<> Builder(LoopPreheader->getTerminator());
   if (isa<TerminatorInst>(LIC)) {
     // Terminator with a return value.
     // Create a freeze instruction, and put it just before the old
     // branch instruction (in loop preheader)
     assert (isa<InvokeInst>(LIC) && "Unknown terminator instruction");
-    FreezeInst *FI = new FreezeInst(LIC, LIC->getName() + ".fr");
-    FI->insertBefore(LoopPreheader->getTerminator());
+    Instruction *FI = Builder.CreateFreeze(LIC, LIC->getName() + ".fr");
     LIC = FI;
   } else {
     // Put freeze at def of LIC, and replace all uses with the new freeze

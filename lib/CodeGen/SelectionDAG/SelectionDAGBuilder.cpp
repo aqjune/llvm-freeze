@@ -5746,6 +5746,14 @@ SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I, unsigned Intrinsic) {
   case Intrinsic::experimental_deoptimize:
     LowerDeoptimizeCall(&I);
     return nullptr;
+
+  case Intrinsic::freeze:
+    SDValue N = getValue(I.getOperand(0));
+    SDLoc dl = getCurSDLoc();
+    EVT DestVT = DAG.getTargetLoweringInfo().getValueType(DAG.getDataLayout(),
+                                                          I.getType());
+    setValue(&I, DAG.getNode(ISD::FREEZE, dl, DestVT, N));
+    return nullptr;
   }
 }
 

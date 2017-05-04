@@ -1685,8 +1685,13 @@ public:
     return Insert(InsertValueInst::Create(Agg, Val, Idxs), Name);
   }
 
-  Value *CreateFreeze(Value *V, const Twine &Name = "") {
-    return Insert(new FreezeInst(V), Name);
+  Instruction *CreateFreeze(Value *V, const Twine &Name = "") {
+    Value *Args[] = {V};
+    Type *ArgTys[] = {V->getType()};
+    Module *M = BB->getModule();
+    Value *FreezeFunc = Intrinsic::getDeclaration(M, Intrinsic::freeze, ArrayRef<Type *>(ArgTys, 1));
+    Instruction *FI = CallInst::Create(FreezeFunc, ArrayRef<Value *>(Args, 1), Name);
+    return Insert(FI, Name);
   }
 
   LandingPadInst *CreateLandingPad(Type *Ty, unsigned NumClauses,
@@ -1715,13 +1720,15 @@ public:
   /// the new value
   Value *CreateFreezeAtDef(Value *Arg, Function *F, const Twine &Name = "",
                            bool replaceAllUses = true) {
-    FreezeInst *FI = nullptr;
+    Value *Args[] = {Arg};
+    Type *ArgTys[] = {Arg->getType()};
+    Module *M = BB->getModule();
+    Value *FreezeFunc = Intrinsic::getDeclaration(M, Intrinsic::freeze, ArrayRef<Type *>(ArgTys, 1));
+    Instruction *FI = CallInst::Create(FreezeFunc, ArrayRef<Value *>(Args, 1), Name);
 
     if (Instruction *I = dyn_cast<Instruction>(Arg)) {
-      FI = new FreezeInst(I, Name);
-      BasicBlock *BB = I->getParent();
-
       if (isa<PHINode>(I)) {
+        BasicBlock *BB = I->getParent();
         BB->getInstList().insert(BB->getFirstInsertionPt(), FI);
       } else if (isa<TerminatorInst>(I)) {
         llvm_unreachable("unhandled value to freeze");
@@ -1730,9 +1737,9 @@ public:
       }
     } else if (Argument *A = dyn_cast<Argument>(Arg)) {
       BasicBlock &Entry = F->getEntryBlock();
-      FI = new FreezeInst(Arg, Name, &*Entry.getFirstInsertionPt());
+      Entry.getInstList().insert(Entry.getFirstInsertionPt(), FI);
     } else {
-      llvm_unreachable("unhandled value to freeze");
+       llvm_unreachable("Unexpected value type");
     }
 
     if (replaceAllUses) {

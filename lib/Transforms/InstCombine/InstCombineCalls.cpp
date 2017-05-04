@@ -2799,6 +2799,17 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     // TODO: relocate((gep p, C, C2, ...)) -> gep(relocate(p), C, C2, ...)
     break;
   }
+  case Intrinsic::freeze: {
+    Value *Op0 = II->getOperand(0);
+
+    if (Value *V = SimplifyFreezeInst(Op0, DL, &TLI, &DT, &AC))
+      return replaceInstUsesWith(*II, V);
+
+    if (IntrinsicInst *Op0_II = dyn_cast<IntrinsicInst>(Op0))
+      if (Op0_II->getIntrinsicID() == Intrinsic::freeze)
+        return replaceInstUsesWith(*II, Op0_II);
+    break;
+  }
   }
 
   return visitCallSite(II);

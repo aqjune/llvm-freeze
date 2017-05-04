@@ -4247,6 +4247,8 @@ static bool maskIsAllZeroOrUndef(Value *Mask) {
   return true;
 }
 
+static Value *SimplifyFreezeInst(Value *Op0);
+
 template <typename IterTy>
 static Value *SimplifyIntrinsic(Function *F, IterTy ArgBegin, IterTy ArgEnd,
                                 const Query &Q, unsigned MaxRecurse) {
@@ -4267,6 +4269,9 @@ static Value *SimplifyIntrinsic(Function *F, IterTy ArgBegin, IterTy ArgEnd,
     case Intrinsic::fabs: {
       if (SignBitMustBeZero(*ArgBegin, Q.TLI))
         return *ArgBegin;
+    }
+    case Intrinsic::freeze: {
+      return ::SimplifyFreezeInst(*ArgBegin);
     }
     default:
       return nullptr;
