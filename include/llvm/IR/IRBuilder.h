@@ -1686,7 +1686,12 @@ public:
   }
 
   Value *CreateFreeze(Value *V, const Twine &Name = "") {
-    return Insert(new FreezeInst(V), Name);
+    Value *Args[] = {V};
+    Type *ArgTys[] = {V->getType()};
+    Module *M = BB->getModule();
+    Value *FreezeFunc = Intrinsic::getDeclaration(M, Intrinsic::freeze, ArrayRef<Type *>(ArgTys, 1));
+    Instruction *FI = CallInst::Create(FreezeFunc, ArrayRef<Value *>(Args, 1), Name);
+    return Insert(FI, Name);
   }
 
   LandingPadInst *CreateLandingPad(Type *Ty, unsigned NumClauses,
@@ -1719,11 +1724,16 @@ public:
       return Arg;
 
     assert (!isa<Constant>(Arg) && "Constant has no def");
+    assert(Arg->getType()->isIntegerTy());
+    Value *Args[] = {Arg};
+    Type *ArgTys[] = {Arg->getType()};
+    Module *M = BB->getModule();
+    Value *FreezeFunc = Intrinsic::getDeclaration(M, Intrinsic::freeze, ArrayRef<Type *>(ArgTys, 1));
+    Instruction *FI = CallInst::Create(FreezeFunc, ArrayRef<Value *>(Args, 1), Name);
 
     if (Instruction *I = dyn_cast<Instruction>(Arg)) {
-      FreezeInst *FI = new FreezeInst(I, Name);
-      BasicBlock *BB = I->getParent();
       if (isa<PHINode>(I)) {
+        BasicBlock *BB = I->getParent();
         BB->getInstList().insert(BB->getFirstInsertionPt(), FI);
       } else if (isa<InvokeInst>(I)) {
         // invoke is a terminator, so we have to put freeze into
@@ -1732,23 +1742,18 @@ public:
       } else {
         FI->insertAfter(I);
       }
-      if (replaceAllUses) {
-        I->replaceAllUsesWith(FI);
-        FI->replaceUsesOfWith(FI, I);
-      }
-      return FI;
-    } else {
-      assert(isa<Argument>(Arg) && "Cannot freeze the value");
+    } else if (isa<Argument>(Arg)) {
       BasicBlock &Entry = F->getEntryBlock();
-      FreezeInst *FI = new FreezeInst(Arg, Name, &*Entry.getFirstInsertionPt());
-      if(replaceAllUses) {
-        Arg->replaceAllUsesWith(FI);
-        FI->replaceUsesOfWith(FI, Arg);
-      }
-      return FI;
+      Entry.getInstList().insert(Entry.getFirstInsertionPt(), FI);
+    } else {
+       llvm_unreachable("Unexpected value type");
     }
 
-    return nullptr;
+    if (replaceAllUses) {
+      Arg->replaceAllUsesWith(FI);
+      FI->replaceUsesOfWith(FI, Arg);
+    }
+    return FI;
   }
 
   /// \brief Return the i64 difference between two pointer values, dividing out

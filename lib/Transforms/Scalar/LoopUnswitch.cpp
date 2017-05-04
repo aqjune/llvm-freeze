@@ -902,12 +902,11 @@ void LoopUnswitch::UnswitchTrivialCondition(Loop *L, Value *Cond, Constant *Val,
 
   // Freeze
   if (NeedFreeze) {
-    IRBuilder<> Builder(NewPH);
+    IRBuilder<> Builder(loopPreheader->getTerminator());
     if (isa<TerminatorInst>(Cond)) {
       // Terminator with a return value.
       // InvokeInst is the only case now (LLVM 3.9)
-      FreezeInst *FI = new FreezeInst(Cond, Cond->getName() + ".fr");
-      FI->insertBefore(loopPreheader->getTerminator());
+      Value *FI = Builder.CreateFreeze(Cond, Cond->getName() + ".fr");
       Cond = FI;
     } else {
       Cond = Builder.CreateFreezeAtDef(Cond, ExitBlock->getParent(),
@@ -1234,12 +1233,11 @@ void LoopUnswitch::UnswitchNontrivialCondition(Value *LIC, Constant *Val,
 
   if (NeedFreeze) {
     // Freeze the condition
-    IRBuilder<> Builder(loopPreheader);
+    IRBuilder<> Builder(OldBR);
     if (isa<TerminatorInst>(LIC)) {
       // Terminator with a return value.
       // InvokeInst is the only case now (LLVM 3.9)
-      FreezeInst *FI = new FreezeInst(LIC, LIC->getName() + ".fr");
-      FI->insertBefore(OldBR);
+      Value *FI = Builder.CreateFreeze(LIC, LIC->getName() + ".fr");
       LIC = FI;
     } else {
       // Put freeze at def of LIC, and replace all uses with new freeze

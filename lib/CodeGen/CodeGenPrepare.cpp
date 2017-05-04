@@ -1871,6 +1871,54 @@ static bool despeculateCountZeros(IntrinsicInst *CountZeros,
   return true;
 }
 
+/// If we have a FreezeInst that will inhibit important optimizations,
+/// try to remove the instruction or fold into its operand.
+static bool optimizeFreezeIntrinsic(IntrinsicInst *FI) {
+  /// Handle this case : 
+  ///   %cmp = icmp op i32 %x, ConstantInt
+  ///   %cmp.fr = freeze i1 %cmp
+  ///   %x = and/or i1 %cmp.fr, ...
+  /// =>
+  ///   %x.fr = freeze i32 %x
+  ///   %cmp = icmp op i32 %x.fr, ConstantInt
+  ///   %x = and/or i1 %cmp, ...
+  /// We need this because SelectionDAGBuilder::visitBr() tries to
+  /// optimize br i1 (and (icmp ...), (icmp ...)) into two separated
+  /// branches.
+  ICmpInst *ICmp = dyn_cast<ICmpInst>(FI->getArgOperand(0));
+  if (!ICmp)
+    return false;
+  ICmpInst::Predicate Pred;
+  Value *ICmpLHS;
+  ConstantInt *ICmpRHS;
+
+  if (match(ICmp, m_ICmp(Pred, m_Value(ICmpLHS), m_ConstantInt(ICmpRHS)))) {
+     // We allow this transformation if FI's users are br / and / or.
+     bool OptCase = true;
+     for (auto itr = FI->user_begin(); itr != FI->user_end(); itr++) {
+       Value *V = *itr;
+       if (isa<BranchInst>(V)) continue;
+       else if (BinaryOperator *Bop = dyn_cast<BinaryOperator>(V)) {
+         if (Bop->getOpcode() == Instruction::And ||
+             Bop->getOpcode() == Instruction::Or)
+           continue;
+       }
+       OptCase = false;
+       break;
+     }
+     if (OptCase) {
+       IRBuilder<> Builder(ICmp);
+       Value *ICmpLHSFr = Builder.CreateFreeze(ICmpLHS);
+       // Insert %x.fr
+       ICmp->setOperand(0, ICmpLHSFr);
+       FI->replaceAllUsesWith(ICmp);
+       FI->eraseFromParent();
+       return true;
+     }
+  }
+  return false;
+}
+
 bool CodeGenPrepare::optimizeCallInst(CallInst *CI, bool& ModifiedDT) {
   BasicBlock *BB = CI->getParent();
 
@@ -2026,6 +2074,8 @@ bool CodeGenPrepare::optimizeCallInst(CallInst *CI, bool& ModifiedDT) {
     case Intrinsic::ctlz:
       // If counting zeros is expensive, try to avoid it.
       return despeculateCountZeros(II, TLI, DL, ModifiedDT);
+    case Intrinsic::freeze:
+      return optimizeFreezeIntrinsic(II);
     }
 
     if (TLI) {
@@ -5041,6 +5091,7 @@ bool CodeGenPrepare::optimizeFreezeInst(FreezeInst *FI) {
   }
   return false;
 }
+
 
 namespace {
 /// \brief Helper class to promote a scalar operation to a vector one.
