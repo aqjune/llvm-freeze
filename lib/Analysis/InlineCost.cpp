@@ -1089,6 +1089,10 @@ bool CallAnalyzer::analyzeBlock(BasicBlock *BB,
     if (isa<FreezeInst>(I))
       continue;
 
+    if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(I))
+      if (II->getIntrinsicID() == Intrinsic::freeze)
+        continue;
+
     // Skip ephemeral values.
     if (EphValues.count(&*I))
       continue;
