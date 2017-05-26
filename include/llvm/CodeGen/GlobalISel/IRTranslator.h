@@ -122,6 +122,9 @@ private:
   /// Translate an LLVM store instruction into generic IR.
   bool translateStore(const User &U, MachineIRBuilder &MIRBuilder);
 
+  bool translateFreeze(const User &U, MachineIRBuilder &MIRBuilder)
+  { return false; }
+
   /// Translate an LLVM string intrinsic (memcpy, memset, ...).
   bool translateMemfunc(const CallInst &CI, MachineIRBuilder &MIRBuilder,
                         unsigned Intrinsic);

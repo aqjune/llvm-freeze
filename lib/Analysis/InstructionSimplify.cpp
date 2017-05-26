@@ -4542,11 +4542,7 @@ static Value *SimplifyFreezeInst(Value *Op0) {
   return nullptr;
 }
 
-Value *llvm::SimplifyFreezeInst(Value *Op0,
-                              const DataLayout &DL,
-                              const TargetLibraryInfo *TLI,
-                              const DominatorTree *DT, AssumptionCache *AC,
-                              const Instruction *CxtI) {
+Value *llvm::SimplifyFreezeInst(Value *Op0) {
   return ::SimplifyFreezeInst(Op0);
 }
 
@@ -4693,7 +4689,7 @@ Value *llvm::SimplifyInstruction(Instruction *I, const SimplifyQuery &SQ,
     break;
   case Instruction::Freeze:
     Result = 
-        SimplifyFreezeInst(I->getOperand(0), DL, TLI, DT, AC, I);
+        SimplifyFreezeInst(I->getOperand(0));
     break;
   }
 
