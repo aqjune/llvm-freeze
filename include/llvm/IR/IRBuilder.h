@@ -1747,6 +1747,10 @@ public:
     return Insert(InsertValueInst::Create(Agg, Val, Idxs), Name);
   }
 
+  Value *CreateFreeze(Value *V, const Twine &Name = "") {
+    return Insert(new FreezeInst(V), Name);
+  }
+
   LandingPadInst *CreateLandingPad(Type *Ty, unsigned NumClauses,
                                    const Twine &Name = "") {
     return Insert(LandingPadInst::Create(Ty, NumClauses), Name);
@@ -1766,6 +1770,47 @@ public:
   Value *CreateIsNotNull(Value *Arg, const Twine &Name = "") {
     return CreateICmpNE(Arg, Constant::getNullValue(Arg->getType()),
                         Name);
+  }
+
+  /// \brief If \p Arg is guaranteed not to be undef, return \p Arg.
+  /// Otherwise, insert a freeze instruction at the definition of \p Arg and return 
+  /// the new value
+  Value *CreateFreezeAtDef(Value *Arg, Function *F, const Twine &Name = "",
+                           bool replaceAllUses = true) {
+    if (FreezeInst::isGuaranteedNotToBeUndef(Arg))
+      return Arg;
+
+    assert (!isa<Constant>(Arg) && "Constant has no def");
+
+    if (Instruction *I = dyn_cast<Instruction>(Arg)) {
+      FreezeInst *FI = new FreezeInst(I, Name);
+      BasicBlock *BB = I->getParent();
+      if (isa<PHINode>(I)) {
+        BB->getInstList().insert(BB->getFirstInsertionPt(), FI);
+      } else if (isa<InvokeInst>(I)) {
+        // invoke is a terminator, so we have to put freeze into
+        // the beginning of its branch.
+        assert (!isa<InvokeInst>(I) && "Cannot put Freeze at def of terminator.");
+      } else {
+        FI->insertAfter(I);
+      }
+      if (replaceAllUses) {
+        I->replaceAllUsesWith(FI);
+        FI->replaceUsesOfWith(FI, I);
+      }
+      return FI;
+    } else {
+      assert(isa<Argument>(Arg) && "Cannot freeze the value");
+      BasicBlock &Entry = F->getEntryBlock();
+      FreezeInst *FI = new FreezeInst(Arg, Name, &*Entry.getFirstInsertionPt());
+      if(replaceAllUses) {
+        Arg->replaceAllUsesWith(FI);
+        FI->replaceUsesOfWith(FI, Arg);
+      }
+      return FI;
+    }
+
+    return nullptr;
   }
 
   /// \brief Return the i64 difference between two pointer values, dividing out

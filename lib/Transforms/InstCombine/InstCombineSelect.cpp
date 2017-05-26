@@ -211,11 +211,39 @@ Instruction *InstCombiner::foldSelectOpOp(SelectInst &SI, Instruction *TI,
   }
 
   // If we reach here, they do have operations in common.
-  Value *NewSI = Builder->CreateSelect(SI.getCondition(), OtherOpT, OtherOpF,
-                                       SI.getName() + ".v", &SI);
-  Value *Op0 = MatchIsOpZero ? MatchOp : NewSI;
-  Value *Op1 = MatchIsOpZero ? NewSI : MatchOp;
-  return BinaryOperator::Create(BO->getOpcode(), Op0, Op1);
+  // Freeze the condition value to prevent this case : 
+  //   <src>                 |      <tgt>
+  // X = udiv A, B           | 
+  // Y = udiv A, C           | t' = select undef, B, C (which is undef)
+  // Z = select undef, X, Y  | Z = udiv A, t' (which is UB)
+  Value *Cond = SI.getCondition();
+  switch (TI->getOpcode()) {
+  default : break;
+  case Instruction::UDiv:
+  case Instruction::URem:
+  case Instruction::SDiv:
+  case Instruction::SRem:
+    if (!isa<Constant>(SI.getCondition()) && 
+        !isa<TerminatorInst>(SI.getCondition()))
+      // Create Freeze at the definition of condition value, and
+      // replace all uses of SI.getCondition() with the new freeze instruction.
+      Cond = Builder->CreateFreezeAtDef(Cond,
+                                       SI.getParent()->getParent(),
+                                       Cond->getName() + ".fr");
+    else
+      Cond = Builder->CreateFreeze(Cond, 
+                                   Cond->getName() + ".fr");
+  }
+  Value *NewSI = Builder->CreateSelect(Cond, OtherOpT,
+                                       OtherOpF, SI.getName()+".v");
+
+  if (BinaryOperator *BO = dyn_cast<BinaryOperator>(TI)) {
+    if (MatchIsOpZero)
+      return BinaryOperator::Create(BO->getOpcode(), MatchOp, NewSI);
+    else
+      return BinaryOperator::Create(BO->getOpcode(), NewSI, MatchOp);
+  }
+  llvm_unreachable("Shouldn't get here");
 }
 
 static bool isSelect01(Constant *C1, Constant *C2) {

@@ -202,6 +202,14 @@ struct SimplifyQuery {
   /// Given a function and set of arguments, fold the result or return null.
   Value *SimplifyCall(Value *V, ArrayRef<Value *> Args, const SimplifyQuery &Q);
 
+  /// SimplifyFreezeInst - Given operands for a Freeze, see if we can
+  /// fold the result.  If not, this returns null.
+  Value *SimplifyFreezeInst(Value *Op, const DataLayout &DL,
+                         const TargetLibraryInfo *TLI = nullptr,
+                         const DominatorTree *DT = nullptr,
+                         AssumptionCache *AC = nullptr,
+                         const Instruction *CxtI = nullptr);
+
   /// See if we can compute a simplified version of this instruction. If not,
   /// return null.
   Value *SimplifyInstruction(Instruction *I, const SimplifyQuery &Q,

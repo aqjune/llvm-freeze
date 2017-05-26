@@ -134,7 +134,10 @@ typedef enum {
   LLVMCatchRet       = 62,
   LLVMCatchPad       = 63,
   LLVMCleanupPad     = 64,
-  LLVMCatchSwitch    = 65
+  LLVMCatchSwitch    = 65,
+
+  /* Undef Handling Operators */
+  LLVMFreeze         = 66
 } LLVMOpcode;
 
 typedef enum {
@@ -1206,6 +1209,7 @@ LLVMTypeRef LLVMX86MMXType(void);
       macro(SelectInst)                     \
       macro(ShuffleVectorInst)              \
       macro(StoreInst)                      \
+      macro(FreezeInst)                     \
       macro(TerminatorInst)                 \
         macro(BranchInst)                   \
         macro(IndirectBrInst)               \
@@ -3030,6 +3034,8 @@ LLVMValueRef LLVMBuildExtractValue(LLVMBuilderRef, LLVMValueRef AggVal,
 LLVMValueRef LLVMBuildInsertValue(LLVMBuilderRef, LLVMValueRef AggVal,
                                   LLVMValueRef EltVal, unsigned Index,
                                   const char *Name);
+LLVMValueRef LLVMBuildFreeze(LLVMBuilderRef, LLVMValueRef Val,
+                                   const char *Name);
 
 LLVMValueRef LLVMBuildIsNull(LLVMBuilderRef, LLVMValueRef Val,
                              const char *Name);
