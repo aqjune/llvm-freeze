@@ -547,7 +547,7 @@ private:
   void visitVAArgInst     (Instruction &I) { markOverdefined(&I); }
 
   // Don't handle freeze instructions for now.
-  void visitFreezeInst    (FreezeInst &I) { markAnythingOverdefined(&I); }
+  void visitFreezeInst    (FreezeInst &I) { markOverdefined(&I); }
 
   void visitInstruction(Instruction &I) {
     // If a new instruction is added to LLVM that we don't handle.
