@@ -1187,6 +1187,12 @@ m_SelectCst(const Cond &C) {
   return m_Select(C, m_ConstantInt<L>(), m_ConstantInt<R>());
 }
 
+/// Matches LoadInst.
+template <typename OpTy>
+inline OneOps_match<OpTy, Instruction::Freeze> m_Freeze(const OpTy &Op) {
+  return OneOps_match<OpTy, Instruction::Freeze>(Op);
+}
+
 /// Matches InsertElementInst.
 template <typename Val_t, typename Elt_t, typename Idx_t>
 inline ThreeOps_match<Val_t, Elt_t, Idx_t, Instruction::InsertElement>
