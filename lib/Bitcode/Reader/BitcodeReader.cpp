@@ -1065,6 +1065,8 @@ static int getDecodedUnaryOpcode(unsigned Val, Type *Ty) {
     return -1;
   case bitc::UNOP_NEG:
     return IsFP ? Instruction::FNeg : -1;
+  case bitc::UNOP_FREEZE:
+    return Instruction::Freeze;
   }
 }
 

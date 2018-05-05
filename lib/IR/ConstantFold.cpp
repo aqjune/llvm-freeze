@@ -928,6 +928,7 @@ Constant *llvm::ConstantFoldUnaryInstruction(unsigned Opcode, Constant *C) {
     switch (static_cast<Instruction::UnaryOps>(Opcode)) {
     case Instruction::FNeg:
       return C; // -undef -> undef
+    case Instruction::Freeze:
     case Instruction::UnaryOpsEnd:
       llvm_unreachable("Invalid UnaryOp");
     }

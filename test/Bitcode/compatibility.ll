@@ -1102,9 +1102,15 @@ continue:
 }
 
 ; Instructions -- Unary Operations
-define void @instructions.unops(double %op1) {
+define void @instructions.unops(double %op1, i32 %op2, <2 x i32> %op3) {
   fneg double %op1
   ; CHECK: fneg double %op1
+  freeze i32 %op2
+  ; CHECK: freeze i32 %op2
+  freeze double %op1
+  ; CHECK: freeze double %op1
+  freeze <2 x i32> %op3
+  ; CHECK: freeze <2 x i32> %op3
   ret void
 }
 

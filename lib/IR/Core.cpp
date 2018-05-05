@@ -3410,6 +3410,11 @@ LLVMValueRef LLVMBuildFNeg(LLVMBuilderRef B, LLVMValueRef V, const char *Name) {
   return wrap(unwrap(B)->CreateFNeg(unwrap(V), Name));
 }
 
+LLVMValueRef LLVMBuildFreeze(LLVMBuilderRef B, LLVMValueRef V,
+                             const char *Name) {
+  return wrap(unwrap(B)->CreateFreeze(unwrap(V), Name));
+}
+
 LLVMValueRef LLVMBuildNot(LLVMBuilderRef B, LLVMValueRef V, const char *Name) {
   return wrap(unwrap(B)->CreateNot(unwrap(V), Name));
 }
@@ -3438,13 +3443,13 @@ LLVMValueRef LLVMBuildArrayMalloc(LLVMBuilderRef B, LLVMTypeRef Ty,
   return wrap(unwrap(B)->Insert(Malloc, Twine(Name)));
 }
 
-LLVMValueRef LLVMBuildMemSet(LLVMBuilderRef B, LLVMValueRef Ptr, 
+LLVMValueRef LLVMBuildMemSet(LLVMBuilderRef B, LLVMValueRef Ptr,
                              LLVMValueRef Val, LLVMValueRef Len,
                              unsigned Align) {
   return wrap(unwrap(B)->CreateMemSet(unwrap(Ptr), unwrap(Val), unwrap(Len), Align));
 }
 
-LLVMValueRef LLVMBuildMemCpy(LLVMBuilderRef B, 
+LLVMValueRef LLVMBuildMemCpy(LLVMBuilderRef B,
                              LLVMValueRef Dst, unsigned DstAlign,
                              LLVMValueRef Src, unsigned SrcAlign,
                              LLVMValueRef Size) {

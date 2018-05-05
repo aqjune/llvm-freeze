@@ -10541,3 +10541,8 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
     lowerWorkItem(W, SI.getCondition(), SwitchMBB, DefaultMBB);
   }
 }
+
+void SelectionDAGBuilder::visitFreeze(const User &I) {
+  SDValue N = getValue(I.getOperand(0));
+  setValue(&I, N);
+}

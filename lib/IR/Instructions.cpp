@@ -2234,6 +2234,13 @@ void UnaryOperator::AssertOK() {
            "Tried to create a floating-point operation on a "
            "non-floating-point type!");
     break;
+  case Freeze:
+    assert(getType() == LHS->getType() &&
+           "Unary operation should return same type as operand!");
+    assert((getType()->isIntOrIntVectorTy() || getType()->isFPOrFPVectorTy()) &&
+           "Tried to create a freeze operation on a "
+           "non-integer, non-floating-point type!");
+    break;
   default: llvm_unreachable("Invalid opcode provided");
   }
 #endif

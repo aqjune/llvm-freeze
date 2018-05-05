@@ -3403,7 +3403,7 @@ bool LLParser::ParseValID(ValID &ID, PerFunctionState *PFS) {
     ID.Kind = ValID::t_Constant;
     return false;
   }
- 
+
   // Unary Operators.
   case lltok::kw_fneg: {
     unsigned Opc = Lex.getUIntVal();
@@ -3413,7 +3413,7 @@ bool LLParser::ParseValID(ValID &ID, PerFunctionState *PFS) {
         ParseGlobalTypeAndValue(Val) ||
         ParseToken(lltok::rparen, "expected ')' in unary constantexpr"))
       return true;
-    
+
     // Check that the type is valid for the operator.
     switch (Opc) {
     case Instruction::FNeg:
@@ -4749,7 +4749,7 @@ bool LLParser::ParseDICommonBlock(MDNode *&Result, bool IsDistinct) {
   OPTIONAL(declaration, MDField, );                                            \
   OPTIONAL(name, MDStringField, );                                             \
   OPTIONAL(file, MDField, );                                                   \
-  OPTIONAL(line, LineField, );						       
+  OPTIONAL(line, LineField, );
   PARSE_MD_FIELDS();
 #undef VISIT_MD_FIELDS
 
@@ -5706,13 +5706,14 @@ int LLParser::ParseInstruction(Instruction *&Inst, BasicBlock *BB,
   // Unary Operators.
   case lltok::kw_fneg: {
     FastMathFlags FMF = EatFastMathFlagsIfPresent();
-    int Res = ParseUnaryOp(Inst, PFS, KeywordVal, /*IsFP*/true);
+    int Res = ParseUnaryOp(Inst, PFS, KeywordVal, /*IsFP*/true, /*IsInt*/false);
     if (Res != 0)
       return Res;
     if (FMF.any())
       Inst->setFastMathFlags(FMF);
     return false;
   }
+  case lltok::kw_freeze: return ParseUnaryOp(Inst, PFS, KeywordVal, true, true);
   // Binary Operators.
   case lltok::kw_add:
   case lltok::kw_sub:
@@ -6316,16 +6317,18 @@ bool LLParser::ParseCleanupPad(Instruction *&Inst, PerFunctionState &PFS) {
 /// ParseUnaryOp
 ///  ::= UnaryOp TypeAndValue ',' Value
 ///
-/// If IsFP is false, then any integer operand is allowed, if it is true, any fp
-/// operand is allowed.
+/// If IsFP is true, then any fp operand is allowed.
+//  If IsInt is true, then any integer operand is allowed.
 bool LLParser::ParseUnaryOp(Instruction *&Inst, PerFunctionState &PFS,
-                            unsigned Opc, bool IsFP) {
+                            unsigned Opc, bool IsFP, bool IsInt) {
   LocTy Loc; Value *LHS;
   if (ParseTypeAndValue(LHS, Loc, PFS))
     return true;
 
-  bool Valid = IsFP ? LHS->getType()->isFPOrFPVectorTy()
-                    : LHS->getType()->isIntOrIntVectorTy();
+  bool FPCheck = LHS->getType()->isFPOrFPVectorTy();
+  bool IntCheck = LHS->getType()->isIntOrIntVectorTy();
+  bool Valid = (IsFP && IsInt && (FPCheck || IntCheck)) ||
+               (IsFP && FPCheck) || (IsInt && IntCheck);
 
   if (!Valid)
     return Error(Loc, "invalid operand type for instruction");
