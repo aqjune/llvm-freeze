@@ -3102,9 +3102,23 @@ void SelectionDAGBuilder::visitUnary(const User &I, unsigned Opcode) {
   SDNodeFlags Flags;
 
   SDValue Op = getValue(I.getOperand(0));
-  SDValue UnNodeValue = DAG.getNode(Opcode, getCurSDLoc(), Op.getValueType(),
-                                    Op, Flags);
-  setValue(&I, UnNodeValue);
+  if (I.getOperand(0)->getType()->isAggregateType()) {
+    assert(Opcode == ISD::FREEZE);
+
+    EVT VT = Op.getValueType();
+    SmallVector<SDValue, 1> Values;
+    for (unsigned i = 0; i < Op.getNumOperands(); ++i) {
+      SDValue Arg(Op.getNode(), i);
+      SDValue UnNodeValue = DAG.getNode(Opcode, getCurSDLoc(), VT, Arg, Flags);
+      Values.push_back(UnNodeValue);
+    }
+    SDValue MergedValue = DAG.getMergeValues(Values, getCurSDLoc());
+    setValue(&I, MergedValue);
+  } else {
+    SDValue UnNodeValue = DAG.getNode(Opcode, getCurSDLoc(), Op.getValueType(),
+                                      Op, Flags);
+    setValue(&I, UnNodeValue);
+  }
 }
 
 void SelectionDAGBuilder::visitBinary(const User &I, unsigned Opcode) {
@@ -10556,9 +10570,4 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
 
     lowerWorkItem(W, SI.getCondition(), SwitchMBB, DefaultMBB);
   }
-}
-
-void SelectionDAGBuilder::visitFreeze(const User &I) {
-  SDValue N = getValue(I.getOperand(0));
-  setValue(&I, N);
 }

@@ -176,6 +176,11 @@ namespace ISD {
     /// UNDEF - An undefined node.
     UNDEF,
 
+    // FREEZE - FREEZE(VAL) returns an arbitrary value if VAL is UNDEF (or
+    // is evaluated to UNDEF), or returns VAL otherwise. Note that each
+    // read of UNDEF can yield different value, but FREEZE(UNDEF) cannot.
+    FREEZE,
+
     /// EXTRACT_ELEMENT - This is used to get the lower or upper (determined by
     /// a Constant, which is required to be operand #1) half of the integer or
     /// float value specified as operand #0.  This is only for use before
@@ -304,14 +309,14 @@ namespace ISD {
     STRICT_LROUND, STRICT_LLROUND, STRICT_LRINT, STRICT_LLRINT,
 
     /// STRICT_FP_TO_[US]INT - Convert a floating point value to a signed or
-    /// unsigned integer. These have the same semantics as fptosi and fptoui 
+    /// unsigned integer. These have the same semantics as fptosi and fptoui
     /// in IR.
     /// They are used to limit optimizations while the DAG is being optimized.
     STRICT_FP_TO_SINT,
     STRICT_FP_TO_UINT,
 
-    /// X = STRICT_FP_ROUND(Y, TRUNC) - Rounding 'Y' from a larger floating 
-    /// point type down to the precision of the destination VT.  TRUNC is a 
+    /// X = STRICT_FP_ROUND(Y, TRUNC) - Rounding 'Y' from a larger floating
+    /// point type down to the precision of the destination VT.  TRUNC is a
     /// flag, which is always an integer that is zero or one.  If TRUNC is 0,
     /// this is a normal rounding, if it is 1, this FP_ROUND is known to not
     /// change the value of Y.
