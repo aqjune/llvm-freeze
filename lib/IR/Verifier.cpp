@@ -3127,7 +3127,7 @@ void Verifier::visitInvokeInst(InvokeInst &II) {
 /// visitUnaryOperator - Check the argument to the unary operator.
 ///
 void Verifier::visitUnaryOperator(UnaryOperator &U) {
-  Assert(U.getType() == U.getOperand(0)->getType(), 
+  Assert(U.getType() == U.getOperand(0)->getType(),
          "Unary operators must have same type for"
          "operands and result!",
          &U);
@@ -3138,6 +3138,9 @@ void Verifier::visitUnaryOperator(UnaryOperator &U) {
   case Instruction::FNeg:
     Assert(U.getType()->isFPOrFPVectorTy(),
            "FNeg operator only works with float types!", &U);
+    break;
+  case Instruction::Freeze:
+    // Freeze can take all kinds of types.
     break;
   default:
     llvm_unreachable("Unknown UnaryOperator opcode!");
@@ -4821,7 +4824,7 @@ void Verifier::visitConstrainedFPIntrinsic(ConstrainedFPIntrinsic &FPI) {
     break;
 
   case Intrinsic::experimental_constrained_fptosi:
-  case Intrinsic::experimental_constrained_fptoui: { 
+  case Intrinsic::experimental_constrained_fptoui: {
     Assert((NumOperands == 2),
            "invalid arguments for constrained FP intrinsic", &FPI);
     HasExceptionMD = true;
@@ -4885,7 +4888,7 @@ void Verifier::visitConstrainedFPIntrinsic(ConstrainedFPIntrinsic &FPI) {
              "Intrinsic first argument's type must be smaller than result type",
              &FPI);
     }
-  } 
+  }
     break;
 
   default:
@@ -5153,7 +5156,7 @@ struct VerifierLegacyPass : public FunctionPass {
 
   bool runOnFunction(Function &F) override {
     if (!V->verify(F) && FatalErrors) {
-      errs() << "in function " << F.getName() << '\n'; 
+      errs() << "in function " << F.getName() << '\n';
       report_fatal_error("Broken function found, compilation aborted!");
     }
     return false;

@@ -1123,9 +1123,17 @@ continue:
 }
 
 ; Instructions -- Unary Operations
-define void @instructions.unops(double %op1) {
+define void @instructions.unops(double %op1, i32 %op2, <2 x i32> %op3, i8* %op4) {
   fneg double %op1
   ; CHECK: fneg double %op1
+  freeze i32 %op2
+  ; CHECK: freeze i32 %op2
+  freeze double %op1
+  ; CHECK: freeze double %op1
+  freeze <2 x i32> %op3
+  ; CHECK: freeze <2 x i32> %op3
+  freeze i8* %op4
+  ; CHECK: freeze i8* %op4
   ret void
 }
 
@@ -1775,6 +1783,10 @@ declare void @f.speculatable() speculatable
 define i8** @constexpr() {
   ; CHECK: ret i8** getelementptr inbounds ({ [4 x i8*], [4 x i8*] }, { [4 x i8*], [4 x i8*] }* null, i32 0, inrange i32 1, i32 2)
   ret i8** getelementptr inbounds ({ [4 x i8*], [4 x i8*] }, { [4 x i8*], [4 x i8*] }* null, i32 0, inrange i32 1, i32 2)
+}
+
+define i64 @constexpr_freeze() {
+  ret i64 freeze (i64 32)
 }
 
 ; immarg attribute

@@ -4694,7 +4694,7 @@ void SelectionDAGBuilder::visitAtomicLoad(const LoadInst &I) {
       PendingLoads.push_back(OutChain);
     return;
   }
-  
+
   SDValue L = DAG.getAtomic(ISD::ATOMIC_LOAD, dl, MemVT, MemVT, InChain,
                             Ptr, MMO);
 
@@ -10556,4 +10556,9 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
 
     lowerWorkItem(W, SI.getCondition(), SwitchMBB, DefaultMBB);
   }
+}
+
+void SelectionDAGBuilder::visitFreeze(const User &I) {
+  SDValue N = getValue(I.getOperand(0));
+  setValue(&I, N);
 }
