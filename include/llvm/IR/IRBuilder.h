@@ -1928,6 +1928,10 @@ public:
     return Insert(LandingPadInst::Create(Ty, NumClauses), Name);
   }
 
+  Value *CreateFreeze(Value *V, const Twine &Name = "") {
+    return Insert(new FreezeInst(V), Name);
+  }
+
   //===--------------------------------------------------------------------===//
   // Utility creation methods
   //===--------------------------------------------------------------------===//

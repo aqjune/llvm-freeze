@@ -1016,6 +1016,25 @@ m_SelectCst(const Cond &C) {
   return m_Select(C, m_ConstantInt<L>(), m_ConstantInt<R>());
 }
 
+template <typename Op_t> struct FreezeClass_match {
+  Op_t Op;
+
+  FreezeClass_match(const Op_t &OpMatch) : Op(OpMatch) {}
+
+  template <typename OpTy> bool match(OpTy *V) {
+    if (auto *O = dyn_cast<Operator>(V))
+      return O->getOpcode() == Instruction::Freeze &&
+             Op.match(O->getOperand(0));
+    return false;
+  }
+};
+
+/// \brief Matches Freeze.
+template <typename OpTy>
+inline FreezeClass_match<OpTy> m_Freeze(const OpTy &Op) {
+  return FreezeClass_match<OpTy>(Op);
+}
+
 //===----------------------------------------------------------------------===//
 // Matchers for InsertElementInst classes
 //
