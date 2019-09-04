@@ -1072,6 +1072,11 @@ def int_is_constant : Intrinsic<[llvm_i1_ty], [llvm_any_ty], [IntrNoMem, IntrWil
 def int_ptrmask: Intrinsic<[llvm_anyptr_ty], [llvm_anyptr_ty, llvm_anyint_ty],
                            [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
 
+// Intrinsic to freeze bytes in memory
+def int_freeze_mem : Intrinsic<[],
+                               [llvm_anyptr_ty, llvm_anyint_ty, llvm_i1_ty],
+                               [IntrArgMemOnly, NoCapture<0>, IntrWillReturn]>;
+
 //===-------------------------- Masked Intrinsics -------------------------===//
 //
 def int_masked_store : Intrinsic<[], [llvm_anyvector_ty,

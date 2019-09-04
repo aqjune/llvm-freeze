@@ -311,6 +311,7 @@ private:
   void Select_READ_REGISTER(SDNode *Op);
   void Select_WRITE_REGISTER(SDNode *Op);
   void Select_UNDEF(SDNode *N);
+  void Select_FREEZE_MEM(SDNode *N);
   void CannotYetSelect(SDNode *N);
 
 private:

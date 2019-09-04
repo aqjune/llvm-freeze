@@ -1161,6 +1161,7 @@ bool DAGTypeLegalizer::PromoteIntegerOperand(SDNode *N, unsigned OpNo) {
   case ISD::RETURNADDR: Res = PromoteIntOp_FRAMERETURNADDR(N); break;
 
   case ISD::PREFETCH: Res = PromoteIntOp_PREFETCH(N, OpNo); break;
+  case ISD::FREEZE_MEM: Res = PromoteIntOp_FREEZE_MEM(N); break;
 
   case ISD::SMULFIX:
   case ISD::SMULFIXSAT:
@@ -1555,6 +1556,15 @@ SDValue DAGTypeLegalizer::PromoteIntOp_PREFETCH(SDNode *N, unsigned OpNo) {
                                         Op2, Op3, Op4),
                  0);
 }
+
+SDValue DAGTypeLegalizer::PromoteIntOp_FREEZE_MEM(SDNode *N) {
+  // Promote the access size to a supported integer width.
+  SDValue Op2 = ZExtPromotedInteger(N->getOperand(2));
+  return SDValue(DAG.UpdateNodeOperands(N, N->getOperand(0), N->getOperand(1),
+                                        Op2),
+                 0);
+}
+
 
 SDValue DAGTypeLegalizer::PromoteIntOp_FPOWI(SDNode *N) {
   SDValue Op = SExtPromotedInteger(N->getOperand(1));

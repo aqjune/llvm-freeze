@@ -2259,6 +2259,30 @@ void SelectionDAGISel::Select_UNDEF(SDNode *N) {
   CurDAG->SelectNodeTo(N, TargetOpcode::IMPLICIT_DEF, N->getValueType(0));
 }
 
+void SelectionDAGISel::Select_FREEZE_MEM(SDNode *N) {
+  MachineMemOperand *MemOp = cast<MemSDNode>(N)->getMemOperand();
+  SDValue Chain = N->getOperand(0);
+
+  if (!MemOp->isVolatile()) {
+    // Totally remove this FREEZE_MEM.
+    ReplaceUses(SDValue(N, 0), Chain);
+    CurDAG->RemoveDeadNode(N);
+    return;
+  }
+
+  // Lower FREEZE_MEM to a single byte read and write back
+  SDLoc dl(N);
+  SDValue Ptr = N->getOperand(1);
+  MachinePointerInfo Info = MemOp->getPointerInfo();
+
+  SDValue NewLD = CurDAG->getLoad(MVT::i8, dl, Chain, Ptr, Info);
+  SDValue NewST = CurDAG->getStore(NewLD.getValue(1), dl, NewLD, Ptr, Info);
+  ReplaceUses(N, NewST.getNode());
+  CurDAG->RemoveDeadNode(N);
+  Select(NewLD.getNode());
+  Select(NewST.getNode());
+}
+
 /// GetVBR - decode a vbr encoding whose top bit is set.
 LLVM_ATTRIBUTE_ALWAYS_INLINE static inline uint64_t
 GetVBR(uint64_t Val, const unsigned char *MatcherTable, unsigned &Idx) {
@@ -2794,6 +2818,9 @@ void SelectionDAGISel::SelectCodeCommon(SDNode *NodeToMatch,
     return;
   case ISD::UNDEF:
     Select_UNDEF(NodeToMatch);
+    return;
+  case ISD::FREEZE_MEM:
+    Select_FREEZE_MEM(NodeToMatch);
     return;
   }
 

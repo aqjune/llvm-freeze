@@ -813,6 +813,9 @@ namespace ISD {
     /// specifier.
     PREFETCH,
 
+    /// FREEZE_MEM - This freezes bytes in memory.
+    FREEZE_MEM,
+
     /// OUTCHAIN = ATOMIC_FENCE(INCHAIN, ordering, scope)
     /// This corresponds to the fence instruction. It takes an input chain, and
     /// two integer constants: an AtomicOrdering and a SynchronizationScope.

@@ -380,6 +380,7 @@ private:
   SDValue PromoteIntOp_ADDSUBCARRY(SDNode *N, unsigned OpNo);
   SDValue PromoteIntOp_FRAMERETURNADDR(SDNode *N);
   SDValue PromoteIntOp_PREFETCH(SDNode *N, unsigned OpNo);
+  SDValue PromoteIntOp_FREEZE_MEM(SDNode *N);
   SDValue PromoteIntOp_MULFIX(SDNode *N);
   SDValue PromoteIntOp_FPOWI(SDNode *N);
   SDValue PromoteIntOp_VECREDUCE(SDNode *N);

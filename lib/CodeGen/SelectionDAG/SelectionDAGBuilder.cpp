@@ -6874,6 +6874,32 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
                              DAG.getZExtOrTrunc(Const, getCurSDLoc(), DestVT)));
     return;
   }
+  case Intrinsic::freeze_mem: {
+    int needsWrite = dyn_cast<ConstantInt>(I.getArgOperand(2))->getZExtValue();
+    SDValue Ops[3];
+    Ops[0] = DAG.getRoot();
+    Ops[1] = getValue(I.getArgOperand(0));
+    Ops[2] = getValue(I.getArgOperand(1));
+    // freeze_mem reads bytes, freezes them, and writes back
+    auto Flags = MachineMemOperand::MOLoad | MachineMemOperand::MOStore;
+    if (needsWrite) {
+      // Simulate needs_write with volatile attribute.
+      // Note that SelDag still can optimize out freeze_mem with volatile flag
+      // if freeze_mem is followed by a store instruction.
+      Flags |= MachineMemOperand::MOVolatile;
+    }
+    EVT PtrVT =
+        EVT(DAG.getTargetLoweringInfo().getPointerTy(DAG.getDataLayout()));
+
+    // By calling setRoot(), this freeze_mem becomes the latest side-effecting
+    // node inside this basic block. MVT::Other means this freeze_mem() returns
+    // a new token, which is used for control dependency between this and other
+    // operations.
+    DAG.setRoot(DAG.getMemIntrinsicNode(ISD::FREEZE_MEM, sdl, DAG.getVTList(MVT::Other),
+                                        Ops, PtrVT, MachinePointerInfo(I.getArgOperand(0)),
+                                        0, Flags, -1));
+    return;
+  }
   }
 }
 

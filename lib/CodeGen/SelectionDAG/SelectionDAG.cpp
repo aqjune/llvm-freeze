@@ -6588,6 +6588,7 @@ SDValue SelectionDAG::getMemIntrinsicNode(unsigned Opcode, const SDLoc &dl,
           Opcode == ISD::PREFETCH ||
           Opcode == ISD::LIFETIME_START ||
           Opcode == ISD::LIFETIME_END ||
+          Opcode == ISD::FREEZE_MEM ||
           ((int)Opcode <= std::numeric_limits<int>::max() &&
            (int)Opcode >= ISD::FIRST_TARGET_MEMORY_OPCODE)) &&
          "Opcode is not a memory-accessing opcode!");

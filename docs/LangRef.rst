@@ -17003,6 +17003,55 @@ information on the *based on* terminology see
 mask argument does not match the pointer size of the target, the mask is
 zero-extended or truncated accordingly.
 
+.. _int_freeze_mem:
+
+'``llvm.freeze_mem``' Intrinsic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Syntax:
+"""""""
+
+::
+
+      declare void llvm.freeze_mem(ptrty nocapture %ptr, intty %size, i1 %touch_mem) argmemonly willreturn
+
+Overview:
+""""""""""
+
+The ``llvm.freeze_mem`` intrinsic replaces undef bits and poison bits at
+``%size`` bytes from ``%ptr`` in memory into random integer bits (0 or 1).
+``%touch_mem`` is a constant specifying how this intrinsic should be translated
+to assembly.
+If ``%touch_mem`` is false, this intrinsic is translated to nothing.
+If it is true, this is lowered into assembly that reads a random one byte
+between ``%ptr`` and ``%ptr + %touch_mem - 1`` and writes it back to the same
+address.
+
+Semantics:
+""""""""""
+
+``freeze_mem(ptr, size, touch_mem)`` reads ``size`` bytes starting from ``ptr``,
+replaces undef bits and poison bits into random integer bits (which is 0 or 1),
+and stores them back. Bits that are neither undef nor poison are preserved.
+After ``freeze_mem(ptr, size, touch_mem)`` is called, it is guaranteed that
+there is no undef or poison bit in bytes from ``ptr`` to ``ptr + size - 1``.
+
+When translating this intrinsic to assembly, if ``touch_mem`` is true,
+``freeze_mem(ptr, size, touch_mem)`` is translated into assembly that reads
+one byte at address that is randomly chosen from ``[ptr, ptr+size)`` and
+writes it back. This helps operating system initialize the page in use,
+which is needed in certain cases.
+If ``touch_mem`` is false, this intrinsic is translated into nothing.
+
+``size`` is interpreted as a non-negative integer.
+If ``size`` is 0, this intrinsics does nothing.
+If ``touch_mem`` is true and ``size`` is larger than the page size,
+only one of the corresponding pages is touched.
+If ``size`` is non-zero and either ``ptr`` or ``size`` is poison or undef,
+its behavior is undefined. If either ``ptr`` or ``ptr + size - 1`` is not
+dereferenceable, its behavior is undefined. Data-race with any other
+store will raise undefined behavior.
+
 Stack Map Intrinsics
 --------------------
 

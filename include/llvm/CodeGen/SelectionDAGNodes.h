@@ -1397,6 +1397,7 @@ public:
     return N->getOpcode() == ISD::LOAD                ||
            N->getOpcode() == ISD::STORE               ||
            N->getOpcode() == ISD::PREFETCH            ||
+           N->getOpcode() == ISD::FREEZE_MEM          ||
            N->getOpcode() == ISD::ATOMIC_CMP_SWAP     ||
            N->getOpcode() == ISD::ATOMIC_CMP_SWAP_WITH_SUCCESS ||
            N->getOpcode() == ISD::ATOMIC_SWAP         ||

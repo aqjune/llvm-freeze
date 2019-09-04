@@ -4655,6 +4655,12 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
 
     break;
   }
+
+	case Intrinsic::freeze_mem: {
+		Assert(isa<Constant>(Call.getArgOperand(2)),
+					 "llvm.freeze_mem parameter #3 must be a constant.", Call);
+		break;
+	}
   case Intrinsic::sadd_sat:
   case Intrinsic::uadd_sat:
   case Intrinsic::ssub_sat:
