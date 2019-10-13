@@ -326,6 +326,13 @@ static LLVMValueRef clone_constant_impl(LLVMValueRef Cst, LLVMModuleRef M) {
                                     EltCount, LLVMIsPackedStruct(Ty));
   }
 
+  // Try ConstantPointerNull
+  if (LLVMIsAConstantPointerNull(Cst)) {
+    check_value_kind(Cst, LLVMConstantPointerNullValueKind);
+    LLVMTypeRef Ty = TypeCloner(M).Clone(Cst);
+    return LLVMConstNull(Ty);
+  }
+
   // Try undef
   if (LLVMIsUndef(Cst)) {
     check_value_kind(Cst, LLVMUndefValueValueKind);
@@ -1084,7 +1091,7 @@ static void clone_symbols(LLVMModuleRef Src, LLVMModuleRef M) {
       LLVMGlobalSetMetadata(G, Kind, MD);
     }
     LLVMDisposeValueMetadataEntries(AllMetadata);
-    
+
     LLVMSetGlobalConstant(G, LLVMIsGlobalConstant(Cur));
     LLVMSetThreadLocal(G, LLVMIsThreadLocal(Cur));
     LLVMSetExternallyInitialized(G, LLVMIsExternallyInitialized(Cur));
