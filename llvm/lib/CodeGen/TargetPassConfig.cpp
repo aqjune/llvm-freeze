@@ -927,6 +927,16 @@ void TargetPassConfig::addMachinePasses() {
     addMachineLateOptimization();
 
   // Expand pseudo instructions before second scheduling pass.
+  // After this pass, IMPLICIT_DEF cannot yield different values per use.
+  // For example, following transformation is not valid anymore:
+  //  eax = IMPLICIT_DEF
+  //  use(eax)
+  //  use(eax)
+  // =>
+  //  eax = IMPLICIT_DEF
+  //  use(eax)
+  //  ebx = IMPLICIT_DEF
+  //  use(ebx)
   addPass(&ExpandPostRAPseudosID);
 
   // Run pre-sched2 passes.

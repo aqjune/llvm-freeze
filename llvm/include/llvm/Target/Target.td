@@ -1081,6 +1081,15 @@ def IMPLICIT_DEF : StandardPseudoInstruction {
   let isReMaterializable = 1;
   let isAsCheapAsAMove = 1;
 }
+def FREEZE : StandardPseudoInstruction {
+  let OutOperandList = (outs unknown:$dst);
+  let InOperandList = (ins unknown:$src);
+  let AsmString = "FREEZE";
+  let hasSideEffects = 0;
+  let isAsCheapAsAMove = 1;
+  let hasNoSchedulingInfo = 1;
+  let isNotDuplicable = 1;
+}
 def SUBREG_TO_REG : StandardPseudoInstruction {
   let OutOperandList = (outs unknown:$dst);
   let InOperandList = (ins unknown:$implsrc, unknown:$subsrc, i32imm:$subidx);

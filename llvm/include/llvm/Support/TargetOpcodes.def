@@ -53,8 +53,57 @@ HANDLE_TARGET_OPCODE(EXTRACT_SUBREG)
 /// anyext operations on target architectures which support it.
 HANDLE_TARGET_OPCODE(INSERT_SUBREG)
 
-/// IMPLICIT_DEF - This is the MachineInstr-level equivalent of undef.
+/// IMPLICIT_DEF - This instruction simulates LLVM IR's undef/poison value by
+/// creating a register that contains a value of an arbitrary bit pattern.
+/// The register's value can be changed by any instruction that is executed
+/// after IMPLICIT_DEF, except FREEZE. This implies that different instructions
+/// using the IMPLICIT_DEF can see different values.
+/// To constrain different instructions to see the same value of this register,
+/// FREEZE operation can be used.
+///   %1 = IMPLICIT_DEF
+///   read(%1) ; may have implicitly changed the value of register %1
+///   read(%1) ; can read a different value
+///   %2 = FREEZE %1
+///   read(%2)
+///   read(%2) ; these two read the same value from register %2.
+///
+/// Some instructions may have IMPLICIT_DEF-like output register, if inputs are
+/// IMPLICIT_DEF. IMPLICIT_DEF-like register means it works exactly as
+/// IMPLICIT_DEF.
+/// - COPY and COPY_TO_REGCLASS of IMPLICIT_DEF has IMPLICIT_DEF-like output
+/// register, so its value can change by execution of its following
+/// instructions. This allows optimizing COPY(IMPLICIT_DEF) to IMPLICIT_DEF.
+/// - PHI having an IMPLICIT_DEF operand has IMPLICIT_DEF-like output register
+/// if the previous block was from the corresponding basic block. This allows
+/// optimizing PHI(IMPLICIT_DEF, ..., IMPLICIT_DEF) to IMPLICIT_DEF.
+/// - A register can have IMPLICIT_DEF subregisters via REG_SEQUENCE or
+/// INSERT_SUBREG. If EXTRACT_SUBREG extracts one of such subregisters, the
+/// output register is also IMPLICIT_DEF-like.
+///
+/// Except these operations and IMPLICIT_DEF, all other instructions' output
+/// registers behave as expected.
 HANDLE_TARGET_OPCODE(IMPLICIT_DEF)
+
+/// FREEZE - This is the MachineInstr-level equivalent of freeze. It copies the
+/// value of the register operand, but unlike IMPLICIT_DEF, the output
+/// register's value is preserved over the execution of following instructions.
+/// Note that COPY(IMPLICIT_DEF) is different from FREEZE(IMPLICIT_DEF), because
+/// COPY's output register works as IMPLICIT_DEF register again (see the
+/// description of IMPLICIT_DEF).
+///   %1 = IMPLICIT_DEF
+///   %2 = FREEZE %1
+///   read(%2)
+///   read(%2) ; these two read the same value.
+///
+/// Unlike other instructions, FREEZE does not change the value of IMPLICIT_DEF
+/// registers, meaning that consecutive FREEZEs on the same operand yield the
+/// same value. If they are separated, they might return different values.
+///   %1 = IMPLICIT_DEF
+///   %2 = FREEZE %1
+///   read(%2) ; this may have changed the value of %1.
+///   %3 = FREEZE %1 ; %3 and %2 may have different values.
+///   %4 = FREEZE %1 ; %3 and %4 has the same value.
+HANDLE_TARGET_OPCODE(FREEZE)
 
 /// SUBREG_TO_REG - Assert the value of bits in a super register.
 /// The result of this instruction is the value of the second operand inserted

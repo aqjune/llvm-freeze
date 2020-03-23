@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines a pass that expands COPY and SUBREG_TO_REG pseudo
+// This file defines a pass that expands COPY, SUBREG_TO_REG, and FREEZE pseudo
 // instructions after register allocation.
 //
 //===----------------------------------------------------------------------===//
@@ -211,6 +211,7 @@ bool ExpandPostRA::runOnMachineFunction(MachineFunction &MF) {
       case TargetOpcode::SUBREG_TO_REG:
         MadeChange |= LowerSubregToReg(&MI);
         break;
+      case TargetOpcode::FREEZE:
       case TargetOpcode::COPY:
         MadeChange |= LowerCopy(&MI);
         break;

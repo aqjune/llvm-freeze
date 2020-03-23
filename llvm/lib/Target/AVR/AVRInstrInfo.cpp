@@ -485,6 +485,7 @@ unsigned AVRInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   case TargetOpcode::EH_LABEL:
   case TargetOpcode::IMPLICIT_DEF:
   case TargetOpcode::KILL:
+  case TargetOpcode::FREEZE:
   case TargetOpcode::DBG_VALUE:
     return 0;
   case TargetOpcode::INLINEASM:
